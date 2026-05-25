@@ -1,6 +1,10 @@
+/** @typedef {import('./types.js').TokenTypeValue} TokenTypeValue */
+/** @typedef {import('./types.js').LexResult} LexResult */
+
 // ─── Token Types ──────────────────────────────────────────────
 // Every token produced by the lexer carries one of these types.
 
+/** @type {import('./types.js').TokenType} */
 export const TokenType = Object.freeze({
   // ── Literals ──
   Number:       'Number',
@@ -114,6 +118,7 @@ export const TokenType = Object.freeze({
 });
 
 // Keyword lookup table — identifier text → token type
+/** @type {Map<string, TokenTypeValue>} */
 const KEYWORDS = new Map([
   ['annotation',   TokenType.Annotation],
   ['enum',         TokenType.Enum],
@@ -154,6 +159,11 @@ const KEYWORDS = new Map([
   ['switch',       TokenType.Switch],
 ]);
 
+/**
+ * Check whether a string is a FeatureScript keyword.
+ * @param {string} text
+ * @returns {boolean}
+ */
 export function isKeyword(text) {
   return KEYWORDS.has(text);
 }
@@ -163,25 +173,33 @@ export function isKeyword(text) {
 
 export class Token {
   /**
-   * @param {string}  type   - One of TokenType values
-   * @param {string}  value  - Raw source text of the token
-   * @param {number}  line   - 1-based line number
-   * @param {number}  column - 0-based column offset
-   * @param {number}  offset - 0-based byte offset in source
+   * @param {TokenTypeValue} type   - One of TokenType values
+   * @param {string}         value  - Raw source text of the token
+   * @param {number}         line   - 1-based line number
+   * @param {number}         column - 0-based column offset
+   * @param {number}         offset - 0-based byte offset in source
    */
   constructor(type, value, line, column, offset) {
+    /** @type {TokenTypeValue} */
     this.type = type;
+    /** @type {string} */
     this.value = value;
+    /** @type {number} */
     this.line = line;
+    /** @type {number} */
     this.column = column;
+    /** @type {number} */
     this.offset = offset;
+    /** @type {number} */
     this.length = value.length;
   }
 
+  /** @returns {number} Byte offset of the character after this token. */
   get end() {
     return this.offset + this.length;
   }
 
+  /** @returns {string} */
   toString() {
     return `Token(${this.type}, ${JSON.stringify(this.value)}, ${this.line}:${this.column})`;
   }
@@ -194,17 +212,26 @@ export class Token {
 export class Lexer {
   /** @param {string} source */
   constructor(source) {
+    /** @type {string} */
     this.source = source;
+    /** @type {number} */
     this.pos = 0;
+    /** @type {number} */
     this.line = 1;
+    /** @type {number} */
     this.column = 0;
+    /** @type {Token[]} */
     this.tokens = [];
+    /** @type {Token[]} */
     this.errors = [];
   }
 
   // ── Public API ──
 
-  /** Tokenise the full source, returning { tokens, errors }. */
+  /**
+   * Tokenise the full source, returning tokens and errors.
+   * @returns {LexResult}
+   */
   tokenize() {
     while (this.pos < this.source.length) {
       this.skipWhitespace();
@@ -225,10 +252,15 @@ export class Lexer {
 
   // ── Character helpers ──
 
+  /**
+   * @param {number} [offset]
+   * @returns {string}
+   */
   peek(offset = 0) {
     return this.source[this.pos + offset];
   }
 
+  /** @returns {string} */
   advance() {
     const ch = this.source[this.pos];
     this.pos++;
@@ -241,6 +273,10 @@ export class Lexer {
     return ch;
   }
 
+  /**
+   * @param {string} expected
+   * @returns {boolean}
+   */
   match(expected) {
     if (this.pos < this.source.length && this.source[this.pos] === expected) {
       this.advance();
@@ -249,6 +285,13 @@ export class Lexer {
     return false;
   }
 
+  /**
+   * @param {TokenTypeValue} type
+   * @param {number} start
+   * @param {number} startLine
+   * @param {number} startCol
+   * @returns {Token}
+   */
   makeToken(type, start, startLine, startCol) {
     const value = this.source.slice(start, this.pos);
     return new Token(type, value, startLine, startCol, start);
@@ -256,6 +299,7 @@ export class Lexer {
 
   // ── Whitespace ──
 
+  /** @returns {void} */
   skipWhitespace() {
     while (this.pos < this.source.length) {
       const ch = this.source[this.pos];
@@ -269,6 +313,7 @@ export class Lexer {
 
   // ── Main dispatch ──
 
+  /** @returns {Token | undefined} */
   readToken() {
     const start = this.pos;
     const startLine = this.line;
@@ -307,6 +352,12 @@ export class Lexer {
 
   // ── Line comment: // to end of line ──
 
+  /**
+   * @param {number} start
+   * @param {number} startLine
+   * @param {number} startCol
+   * @returns {Token}
+   */
   readLineComment(start, startLine, startCol) {
     this.advance(); // /
     this.advance(); // /
@@ -318,6 +369,12 @@ export class Lexer {
 
   // ── Block comment: /* to */ (no nesting) ──
 
+  /**
+   * @param {number} start
+   * @param {number} startLine
+   * @param {number} startCol
+   * @returns {Token}
+   */
   readBlockComment(start, startLine, startCol) {
     this.advance(); // /
     this.advance(); // *
@@ -336,6 +393,12 @@ export class Lexer {
 
   // ── String: single or double quoted ──
 
+  /**
+   * @param {number} start
+   * @param {number} startLine
+   * @param {number} startCol
+   * @returns {Token}
+   */
   readString(start, startLine, startCol) {
     const quote = this.advance();
     while (this.pos < this.source.length) {
@@ -374,6 +437,12 @@ export class Lexer {
 
   // ── Number: integer, float, scientific notation ──
 
+  /**
+   * @param {number} start
+   * @param {number} startLine
+   * @param {number} startCol
+   * @returns {Token}
+   */
   readNumber(start, startLine, startCol) {
     // Integer part
     while (this.pos < this.source.length && isDigit(this.peek())) {
@@ -401,6 +470,12 @@ export class Lexer {
 
   // ── Identifier or keyword ──
 
+  /**
+   * @param {number} start
+   * @param {number} startLine
+   * @param {number} startCol
+   * @returns {Token}
+   */
   readIdentifier(start, startLine, startCol) {
     while (this.pos < this.source.length && isIdentChar(this.peek())) {
       this.advance();
@@ -413,6 +488,12 @@ export class Lexer {
 
   // ── @builtin identifier ──
 
+  /**
+   * @param {number} start
+   * @param {number} startLine
+   * @param {number} startCol
+   * @returns {Token}
+   */
   readBuiltinId(start, startLine, startCol) {
     while (this.pos < this.source.length && isIdentChar(this.peek())) {
       this.advance();
@@ -422,6 +503,12 @@ export class Lexer {
 
   // ── Operators and punctuation ──
 
+  /**
+   * @param {number} start
+   * @param {number} startLine
+   * @param {number} startCol
+   * @returns {Token}
+   */
   readOperatorOrPunctuation(start, startLine, startCol) {
     const ch = this.advance();
 
@@ -506,14 +593,26 @@ export class Lexer {
 
 // ── Character classification ──
 
+/**
+ * @param {string} ch
+ * @returns {boolean}
+ */
 function isDigit(ch) {
   return ch >= '0' && ch <= '9';
 }
 
+/**
+ * @param {string} ch
+ * @returns {boolean}
+ */
 function isIdentStart(ch) {
   return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || ch === '_';
 }
 
+/**
+ * @param {string} ch
+ * @returns {boolean}
+ */
 function isIdentChar(ch) {
   return isIdentStart(ch) || isDigit(ch);
 }

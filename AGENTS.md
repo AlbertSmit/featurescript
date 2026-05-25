@@ -39,6 +39,7 @@ lsp/src/            Language Server Protocol
 
 vscode-ext/         VS Code extension
   ├── package.json  Extension manifest
+  ├── build.mjs      VSIX packager (zero-dependency, no vsce needed)
   ├── syntaxes/     TextMate grammar (.tmLanguage.json)
   └── src/          Extension activation + LSP client
 
@@ -129,6 +130,23 @@ The parser does not throw on syntax errors. Instead it:
 3. Continues parsing the rest of the file
 
 This is critical for LSP — a file with one error should still provide completions and diagnostics for the rest.
+
+## Building the VS Code Extension
+
+```bash
+# One-time: install the runtime dependency
+cd vscode-ext && pnpm install --prod && cd ..
+
+# Build the .vsix
+node vscode-ext/build.mjs
+
+# Install locally
+code --install-extension vscode-ext/featurescript-0.1.0.vsix
+```
+
+The build script (`vscode-ext/build.mjs`) packages parser, LSP, and linter source into a `.vsix` archive without requiring `vsce`. It writes proper VSIX metadata and uses system `zip`.
+
+**Key detail**: the packaged extension rewrites `extension.js` to resolve the LSP server path via `context.asAbsolutePath()` instead of relative `__dirname` traversal — this is critical for VS Code's extension host sandboxing.
 
 ## Testing
 

@@ -3,6 +3,12 @@
 // Each node carries { type, ...fields, loc } where loc is
 // { start: { line, column, offset }, end: { line, column, offset } }.
 
+/** @typedef {import('./types.js').NodeTypeValue} NodeTypeValue */
+/** @typedef {import('./types.js').ASTNode} ASTNode */
+/** @typedef {import('./types.js').SourceLocation} SourceLocation */
+/** @typedef {import('./types.js').Token} Token */
+
+/** @type {import('./types.js').NodeType} */
 export const NodeType = Object.freeze({
   // ── Program ──
   Program:              'Program',
@@ -71,10 +77,19 @@ export const NodeType = Object.freeze({
 
 // ── Location helpers ──
 
+/**
+ * Build a SourceLocation from start/end position sources.
+ * Accepts Tokens (which have .end as byte offset) and ASTNodes (which have .loc).
+ * @param {import('./types.js').PositionSource} startToken
+ * @param {import('./types.js').PositionSource} endToken
+ * @returns {SourceLocation}
+ */
 export function loc(startToken, endToken) {
+  const s = 'loc' in startToken ? startToken.loc.start : startToken;
+  const e = 'loc' in endToken   ? endToken.loc.end     : endToken;
   return {
-    start: { line: startToken.line, column: startToken.column, offset: startToken.offset },
-    end:   { line: endToken.line,   column: endToken.column,   offset: endToken.end },
+    start: { line: s.line, column: s.column, offset: s.offset },
+    end:   { line: e.line, column: e.column, offset: /** @type {number} */ (e.end ?? e.offset) },
   };
 }
 
@@ -82,6 +97,14 @@ export function loc(startToken, endToken) {
 // All AST nodes are plain objects with a `type` field.
 // This keeps the AST serializable and easy to traverse.
 
+/**
+ * Create an AST node with location information.
+ * @param {NodeTypeValue} type - The node type string
+ * @param {Record<string, unknown>} fields - Node-specific fields
+ * @param {Token | ASTNode} startToken - Start position source
+ * @param {Token | ASTNode} [endToken] - End position source (defaults to startToken)
+ * @returns {ASTNode}
+ */
 export function node(type, fields, startToken, endToken) {
   return { type, ...fields, loc: loc(startToken, endToken ?? startToken) };
 }

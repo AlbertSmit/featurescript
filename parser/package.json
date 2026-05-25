@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "FeatureScript lexer and parser — produces an AST from .fs source files",
   "main": "src/index.js",
+  "types": "src/types.d.ts",
   "type": "module",
   "exports": {
     ".": "./src/index.js",
@@ -14,5 +15,8 @@
   "scripts": {
     "test": "node --test test/*.test.js"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
 }

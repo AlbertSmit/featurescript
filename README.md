@@ -70,6 +70,35 @@ Language Server Protocol provider with:
 - LSP client integration
 - Language configuration (brackets, comments, auto-close)
 
+## Building
+
+The extension ships as a `.vsix` file — a zip archive containing the extension code, the parser, the LSP server, and the linter. No `vsce` or additional build tools required.
+
+### Build the `.vsix`
+
+```bash
+# Install the single runtime dependency (vscode-languageclient)
+cd vscode-ext && pnpm install --prod && cd ..
+
+# Package the extension
+node vscode-ext/build.mjs
+```
+
+Output: `vscode-ext/featurescript-<version>.vsix`
+
+### Install in VS Code
+
+```bash
+code --install-extension vscode-ext/featurescript-0.1.0.vsix
+```
+
+The build script (`vscode-ext/build.mjs`) does the following:
+1. Copies `parser/`, `lsp/`, and `linter/` source into a staging directory
+2. Rewrites the extension entry point to use packaged paths
+3. Writes VSIX metadata (`[Content_Types].xml`, `extension.vsixmanifest`)
+4. Zips everything into a `.vsix` using system `zip`
+5. Cleans up the staging directory
+
 ## Testing
 
 The test suite uses Node.js built-in `node:test` runner with 4 tiers:
@@ -120,6 +149,7 @@ See [`docs/`](docs/) for:
 
 - [FeatureScript Language Reference](docs/featurescript-language-reference.md) — complete syntax, semantics, and type system
 - [AST Node Reference](docs/ast-node-reference.md) — all node types with field descriptions
+- [FeatureScript LLM Writing Guide](docs/featurescript-llm-guide.md) — injectable context for LLMs writing FeatureScript (operator gotchas, validation checklist, stdlib reference)
 
 ## Links
 
