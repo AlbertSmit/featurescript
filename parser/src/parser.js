@@ -25,5 +25,10 @@ export function parse(source) {
   }
 
   const ast = node(NodeType.Program, { body }, tokens[0], tokens[tokens.length - 1]);
-  return { ast: /** @type {import('./types.js').ProgramNode} */ (ast), errors: [...lexErrors, ...p.errors] };
+  /** @type {import('./types.js').ParseError[]} */
+  const errors = [
+    ...lexErrors.map(t => ({ message: `Unexpected token: ${t.value}`, line: t.line, column: t.column, offset: t.offset })),
+    ...p.errors,
+  ];
+  return { ast: /** @type {import('./types.js').ProgramNode} */ (ast), errors };
 }

@@ -66,7 +66,7 @@ export function parseTernaryExpr(p) {
     const consequent = parseExpression(p);
     p.expect(TokenType.Colon);
     const alternate = parseExpression(p);
-    expr = /** @type {ExpressionNode} */ (node(NodeType.TernaryExpression, { test: expr, consequent, alternate }, expr.loc.start, alternate));
+    expr = /** @type {ExpressionNode} */ (node(NodeType.TernaryExpression, { test: expr, consequent, alternate }, expr, alternate));
   }
   return expr;
 }

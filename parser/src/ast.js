@@ -85,12 +85,26 @@ export const NodeType = Object.freeze({
  * @returns {SourceLocation}
  */
 export function loc(startToken, endToken) {
-  const s = 'loc' in startToken ? startToken.loc.start : startToken;
-  const e = 'loc' in endToken   ? endToken.loc.end     : endToken;
-  return {
-    start: { line: s.line, column: s.column, offset: s.offset },
-    end:   { line: e.line, column: e.column, offset: /** @type {number} */ (e.end ?? e.offset) },
-  };
+  /** @type {import('./types.js').Position} */
+  let start;
+  /** @type {import('./types.js').Position} */
+  let end;
+
+  if ('loc' in startToken) {
+    start = startToken.loc.start;
+  } else {
+    start = { line: startToken.line, column: startToken.column, offset: startToken.offset };
+  }
+
+  if ('loc' in endToken) {
+    end = endToken.loc.end;
+  } else if ('end' in endToken) {
+    end = { line: endToken.line, column: endToken.column, offset: /** @type {number} */ (endToken.end) };
+  } else {
+    end = { line: endToken.line, column: endToken.column, offset: endToken.offset };
+  }
+
+  return { start, end };
 }
 
 // ── Node factory ──
@@ -99,12 +113,14 @@ export function loc(startToken, endToken) {
 
 /**
  * Create an AST node with location information.
+ * The return type is ASTNode but TS can't verify the spread satisfies the
+ * discriminated union — narrowing happens at consumer call sites instead.
  * @param {NodeTypeValue} type - The node type string
  * @param {Record<string, unknown>} fields - Node-specific fields
- * @param {Token | ASTNode} startToken - Start position source
- * @param {Token | ASTNode} [endToken] - End position source (defaults to startToken)
+ * @param {import('./types.js').PositionSource} startToken - Start position source
+ * @param {import('./types.js').PositionSource} [endToken] - End position source (defaults to startToken)
  * @returns {ASTNode}
  */
 export function node(type, fields, startToken, endToken) {
-  return { type, ...fields, loc: loc(startToken, endToken ?? startToken) };
+  return /** @type {ASTNode} */ (/** @type {unknown} */ ({ type, ...fields, loc: loc(startToken, endToken ?? startToken) }));
 }

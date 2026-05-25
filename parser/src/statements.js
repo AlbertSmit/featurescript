@@ -69,7 +69,8 @@ function parseAnnotationStatement(p) {
   const ann = /** @type {AnnotationNode} */ (node(NodeType.Annotation, { entries: map.entries }, start, map));
   // The next statement is the annotated statement
   const stmt = parseStatement(p);
-  stmt.annotations = [ann, ...(stmt.annotations || [])];
+  const s = /** @type {StatementNode & { annotations?: AnnotationNode[] }} */ (stmt);
+  s.annotations = [ann, ...(s.annotations || [])];
   return stmt;
 }
 

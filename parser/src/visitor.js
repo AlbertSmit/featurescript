@@ -27,10 +27,10 @@ export function visit(ast, visitors) {
    */
   function walk(n, parent) {
     if (!n || typeof n !== 'object') return;
-    if (n.type && visitors[n.type]) visitors[n.type](/** @type {never} */ (n), parent);
+    if (n.type && visitors[n.type]) visitors[n.type]?.(/** @type {never} */ (n), parent);
     for (const key of Object.keys(n)) {
       if (key === 'loc' || key === 'type') continue;
-      const val = /** @type {Record<string, unknown>} */ (n)[key];
+      const val = /** @type {Record<string, unknown>} */ (/** @type {unknown} */ (n))[key];
       if (Array.isArray(val)) val.forEach(child => walk(/** @type {ASTNode} */ (child), /** @type {ASTNode} */ (n)));
       else if (val && typeof val === 'object' && /** @type {ASTNode} */ (val).type) walk(/** @type {ASTNode} */ (val), /** @type {ASTNode} */ (n));
     }
