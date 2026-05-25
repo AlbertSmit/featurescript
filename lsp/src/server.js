@@ -1,36 +1,23 @@
-import {
+import lsp from 'vscode-languageserver/node.js';
+const {
   createConnection,
   TextDocuments,
   ProposedFeatures,
   TextDocumentSyncKind,
-  DiagnosticSeverity,
-  CompletionItemKind,
-  SymbolKind,
-} from 'vscode-languageserver/node.js';
+} = lsp;
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { validate } from './diagnostics.js';
+import { loadConfig } from '../../linter/src/config.js';
 import { provideCompletion } from './completions.js';
 import { provideHover } from './hover.js';
 import { provideDocumentSymbols } from './symbols.js';
 import { provideDefinition } from './definition.js';
 import { provideSignatureHelp } from './signature.js';
 import { provideSemanticTokens } from './semantic-tokens.js';
+import { fileURLToPath } from 'url';
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
-
-// ── Cache: source → parsed result ──
-const parseCache = new Map();
-
-function getParsed(uri, source) {
-  const cached = parseCache.get(uri);
-  if (cached && cached.version === source) return cached.result;
-  // Lazy import to avoid top-level await
-  const { parse } = require('../../parser/src/index.js');
-  const result = parse(source);
-  parseCache.set(uri, { version: source, result });
-  return result;
-}
 
 // ── Initialization ──
 
@@ -51,7 +38,13 @@ connection.onInitialize(() => ({
 documents.onDidChangeContent((change) => {
   const doc = change.document;
   const source = doc.getText();
-  const diagnostics = validate(source);
+
+  // Resolve file path for .featurescriptrc.json lookup
+  let filePath;
+  try { filePath = fileURLToPath(doc.uri); } catch { /* untitled docs */ }
+  const config = loadConfig(filePath);
+
+  const diagnostics = validate(source, config.rules);
   connection.sendDiagnostics({ uri: doc.uri, diagnostics });
 });
 

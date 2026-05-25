@@ -1,4 +1,4 @@
-const { LanguageClient, TransportKind } = require('vscode-languageclient/node');
+const { LanguageClient } = require('vscode-languageclient/node');
 const path = require('path');
 
 let client;
@@ -6,9 +6,10 @@ let client;
 function activate(context) {
   const serverModule = path.join(__dirname, '..', '..', 'lsp', 'src', 'server.js');
 
+  // Use command mode so Node respects "type": "module" in lsp/package.json
   const serverOptions = {
-    run:   { module: serverModule, transport: TransportKind.stdio },
-    debug: { module: serverModule, transport: TransportKind.stdio },
+    run:   { command: 'node', args: [serverModule, '--stdio'] },
+    debug: { command: 'node', args: [serverModule, '--stdio'] },
   };
 
   const clientOptions = {

@@ -1,4 +1,5 @@
-import { SymbolKind } from 'vscode-languageserver/node.js';
+import lsp from 'vscode-languageserver/node.js';
+const { SymbolKind } = lsp;
 import { parse, NodeType, visit } from '../../parser/src/index.js';
 
 const KIND_MAP = {

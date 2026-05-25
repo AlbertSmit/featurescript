@@ -1,4 +1,5 @@
-import { CompletionItemKind } from 'vscode-languageserver/node.js';
+import lsp from 'vscode-languageserver/node.js';
+const { CompletionItemKind } = lsp;
 import { parse, NodeType, visit } from '../../parser/src/index.js';
 
 // ── Keyword completions ──

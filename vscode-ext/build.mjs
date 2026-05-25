@@ -77,6 +77,15 @@ for (const f of readdirSync(join(ROOT, 'lsp', 'src'))) {
 }
 cpSync(join(ROOT, 'lsp', 'package.json'), join(extDir, 'lsp', 'package.json'));
 
+// Copy LSP node_modules (server runs as child process, needs its own deps)
+const lspModules = join(ROOT, 'lsp', 'node_modules');
+if (existsSync(lspModules)) {
+  console.log('  ├─ Copying LSP dependencies...');
+  execSync(`cp -rL "${lspModules}" "${join(extDir, 'lsp', 'node_modules')}"`, { stdio: 'pipe' });
+} else {
+  console.log('  │  ⚠  lsp/node_modules not found. Run: cd lsp && pnpm install');
+}
+
 console.log('  ├─ Copying linter...');
 for (const f of readdirSync(join(ROOT, 'linter', 'src'))) {
   cpSync(join(ROOT, 'linter', 'src', f), join(extDir, 'linter', 'src', f));
@@ -92,7 +101,7 @@ console.log('  ├─ Generating extension entry point...');
 // The packaged extension needs paths relative to itself, not the dev layout.
 // In the dev layout, the LSP server is at ../../lsp/src/server.js relative to src/.
 // In the packaged layout, it's at ../lsp/src/server.js relative to src/.
-const extensionSource = `const { LanguageClient, TransportKind } = require('vscode-languageclient/node');
+const extensionSource = `const { LanguageClient } = require('vscode-languageclient/node');
 const path = require('path');
 
 let client;
@@ -100,9 +109,10 @@ let client;
 function activate(context) {
   const serverModule = context.asAbsolutePath(path.join('lsp', 'src', 'server.js'));
 
+  // Use command mode so Node respects "type": "module" in lsp/package.json
   const serverOptions = {
-    run:   { module: serverModule, transport: TransportKind.stdio },
-    debug: { module: serverModule, transport: TransportKind.stdio },
+    run:   { command: 'node', args: [serverModule, '--stdio'] },
+    debug: { command: 'node', args: [serverModule, '--stdio'] },
   };
 
   const clientOptions = {
@@ -146,20 +156,45 @@ writeFileSync(join(extDir, 'package.json'), JSON.stringify(packagedPkg, null, 2)
 
 console.log('  ├─ Installing dependencies...');
 
-// Only need vscode-languageclient — install it into the extension dir
-try {
-  execSync('pnpm install --prod --ignore-scripts 2>/dev/null || true', {
-    cwd: extDir,
-    stdio: 'pipe',
-  });
-} catch {
-  console.log('  │  pnpm not in PATH, attempting fallback...');
+// pnpm uses a content-addressable store with symlinks. A naive `cp -rL` on the
+// top-level node_modules only dereferences the direct dependency symlink, missing
+// transitive deps (e.g. vscode-languageserver-protocol, semver) that live as
+// sibling symlinks inside .pnpm/<pkg>/node_modules/.
+//
+// Fix: walk every package directory in .pnpm/ and hoist each real package folder
+// into a flat node_modules structure that Node's require() can resolve.
 
-  if (!existsSync(join(extDir, 'node_modules', 'vscode-languageclient'))) {
-    console.log('  │  ⚠  vscode-languageclient not installed. Run:');
-    console.log('  │     cd vscode-ext && pnpm install --prod');
-    console.log('  │     Then re-run this script.');
+const srcModules = join(__dirname, 'node_modules');
+const destModules = join(extDir, 'node_modules');
+const pnpmDir = join(srcModules, '.pnpm');
+
+if (existsSync(pnpmDir)) {
+  mkdirSync(destModules, { recursive: true });
+
+  // Each dir in .pnpm/ is <name>@<version> (or @scope+name@version)
+  // Inside each: node_modules/<name> holds the real package files
+  for (const entry of readdirSync(pnpmDir)) {
+    if (entry === 'node_modules' || entry === 'lock.yaml') continue;
+    const innerModules = join(pnpmDir, entry, 'node_modules');
+    if (!existsSync(innerModules)) continue;
+
+    for (const pkg of readdirSync(innerModules)) {
+      if (pkg.startsWith('.')) continue;
+      const src = join(innerModules, pkg);
+      const dest = join(destModules, pkg);
+      // Skip if already copied (first encountered wins)
+      if (existsSync(dest)) continue;
+      // -rL dereferences any remaining symlinks
+      execSync(`cp -rL "${src}" "${dest}"`, { stdio: 'pipe' });
+    }
   }
+} else if (existsSync(srcModules)) {
+  // Fallback for non-pnpm installs
+  execSync(`cp -rL "${srcModules}" "${destModules}"`, { stdio: 'pipe' });
+} else {
+  console.log('  │  ⚠  node_modules not found. Run:');
+  console.log('  │     cd vscode-ext && pnpm install --prod');
+  console.log('  │     Then re-run this script.');
 }
 
 // ── Write VSIX metadata files ────────────────────────────────
