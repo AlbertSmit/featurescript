@@ -1,0 +1,94 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "FeatureScript",
+  "scopeName": "source.featurescript",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#storage" },
+    { "include": "#constants" },
+    { "include": "#annotations" },
+    { "include": "#functions" },
+    { "include": "#types" },
+    { "include": "#operators" },
+    { "include": "#builtins" },
+    { "include": "#identifiers" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        { "name": "comment.line.double-slash.featurescript", "match": "//.*$" },
+        { "name": "comment.block.featurescript", "begin": "/\\*", "end": "\\*/", "patterns": [{ "name": "comment.block.featurescript", "match": "." }] }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        { "name": "string.quoted.double.featurescript", "begin": "\"", "end": "\"", "patterns": [{ "name": "constant.character.escape.featurescript", "match": "\\\\(u[0-9a-fA-F]{4}|[btnfr\"'\\\\])" }] },
+        { "name": "string.quoted.single.featurescript", "begin": "'", "end": "'", "patterns": [{ "name": "constant.character.escape.featurescript", "match": "\\\\(u[0-9a-fA-F]{4}|[btnfr\"'\\\\])" }] }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        { "name": "constant.numeric.featurescript", "match": "\\b\\d+(\\.\\d+)?([eE][+-]?\\d+)?\\b" }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        { "name": "keyword.control.featurescript", "match": "\\b(if|else|for|while|return|break|continue|in|throw|try|catch|new)\\b" },
+        { "name": "keyword.declaration.featurescript", "match": "\\b(var|const)\\b" },
+        { "name": "keyword.reserved.featurescript", "match": "\\b(assert|case|default|do|switch)\\b" },
+        { "name": "keyword.other.featurescript", "match": "\\b(export|import|precondition|returns)\\b" },
+        { "name": "keyword.operator.type.featurescript", "match": "\\b(is|as)\\b" }
+      ]
+    },
+    "storage": {
+      "patterns": [
+        { "name": "storage.type.function.featurescript", "match": "\\b(function|predicate|operator)\\b" },
+        { "name": "storage.type.featurescript", "match": "\\b(enum|type|typecheck|typeconvert|annotation)\\b" }
+      ]
+    },
+    "constants": {
+      "patterns": [
+        { "name": "constant.language.featurescript", "match": "\\b(true|false|undefined|inf)\\b" }
+      ]
+    },
+    "annotations": {
+      "patterns": [
+        { "name": "entity.other.attribute-name.featurescript", "match": "\\bannotation\\b" }
+      ]
+    },
+    "functions": {
+      "patterns": [
+        { "name": "entity.name.function.featurescript", "match": "\\b([a-zA-Z_]\\w*)(?=\\s*\\()" }
+      ]
+    },
+    "types": {
+      "patterns": [
+        { "name": "support.type.featurescript", "match": "\\b(Context|Id|Query|boolean|number|string|array|map|box|undefined)\\b" },
+        { "comment": "PascalCase identifiers after is/as treated as types", "name": "entity.name.type.featurescript", "match": "(?<=\\b(?:is|as)\\s+)[A-Z]\\w*\\b" }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        { "name": "keyword.operator.assignment.featurescript", "match": "(\\+|\\-|\\*|/|%|\\^|\\|\\||&&|\\?\\?|~)?=" },
+        { "name": "keyword.operator.comparison.featurescript", "match": "(==|!=|<=|>=|<|>)" },
+        { "name": "keyword.operator.logical.featurescript", "match": "(&&|\\|\\||!|\\?\\?)" },
+        { "name": "keyword.operator.arithmetic.featurescript", "match": "(\\+|\\-|\\*|/|%|\\^|~)" },
+        { "name": "keyword.operator.arrow.featurescript", "match": "(->|=>)" },
+        { "name": "keyword.operator.namespace.featurescript", "match": "::" }
+      ]
+    },
+    "builtins": {
+      "patterns": [
+        { "name": "variable.language.builtin.featurescript", "match": "@[a-zA-Z_]\\w*" }
+      ]
+    },
+    "identifiers": {
+      "patterns": [
+        { "name": "variable.other.featurescript", "match": "\\b[a-zA-Z_]\\w*\\b" }
+      ]
+    }
+  }
+}

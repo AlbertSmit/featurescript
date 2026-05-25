@@ -1,0 +1,11 @@
+{
+  "name": "@featurescript/linter",
+  "version": "0.1.0",
+  "description": "FeatureScript linter CLI",
+  "main": "src/index.js",
+  "type": "module",
+  "bin": { "fs-lint": "src/cli.js" },
+  "scripts": { "test": "node --test test/*.test.js" },
+  "dependencies": { "chalk": "^5.3.0" },
+  "license": "MIT"
+}

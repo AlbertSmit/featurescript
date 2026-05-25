@@ -1,0 +1,18 @@
+{
+  "name": "@featurescript/parser",
+  "version": "0.1.0",
+  "description": "FeatureScript lexer and parser — produces an AST from .fs source files",
+  "main": "src/index.js",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./lexer": "./src/lexer.js",
+    "./parser": "./src/parser.js",
+    "./ast": "./src/ast.js",
+    "./visitor": "./src/visitor.js"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "license": "MIT"
+}

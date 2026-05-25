@@ -1,0 +1,16 @@
+{
+  "name": "vscode-featurescript",
+  "displayName": "FeatureScript",
+  "description": "FeatureScript language support: syntax highlighting, LSP, linting",
+  "version": "0.1.0",
+  "publisher": "featurescript",
+  "engines": { "vscode": "^1.85.0" },
+  "categories": ["Programming Languages", "Linters"],
+  "activationEvents": ["onLanguage:featurescript"],
+  "main": "./src/extension.js",
+  "contributes": {
+    "languages": [{ "id": "featurescript", "aliases": ["FeatureScript"], "extensions": [".fs"], "configuration": "./language-configuration.json" }],
+    "grammars": [{ "language": "featurescript", "scopeName": "source.featurescript", "path": "./syntaxes/featurescript.tmLanguage.json" }]
+  },
+  "dependencies": { "vscode-languageclient": "^9.0.1" }
+}
