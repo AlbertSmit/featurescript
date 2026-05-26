@@ -1,35 +1,5 @@
 import { parse, NodeType, visit } from '../../parser/src/index.js';
-import { Lexer } from '../../parser/src/lexer.js';
-
-// ── Stdlib hover docs (subset — extend with stdlib-data.json later) ──
-const DOCS = {
-  opExtrude: 'Extrude a sketch region along a direction.\n\n`opExtrude(context, id, definition)`',
-  opBoolean: 'Perform a boolean operation (union, subtract, intersect) between solid bodies.\n\n`opBoolean(context, id, definition)`',
-  opFillet: 'Create a fillet (rounded edge) on selected edges.\n\n`opFillet(context, id, definition)`',
-  opChamfer: 'Create a chamfer (beveled edge) on selected edges.\n\n`opChamfer(context, id, definition)`',
-  opSweep: 'Sweep a profile along a path.\n\n`opSweep(context, id, definition)`',
-  opLoft: 'Create a loft between profiles.\n\n`opLoft(context, id, definition)`',
-  opRevolve: 'Revolve a sketch region around an axis.\n\n`opRevolve(context, id, definition)`',
-  opPattern: 'Create a pattern of bodies.\n\n`opPattern(context, id, definition)`',
-  opDeleteBodies: 'Delete bodies from the context.\n\n`opDeleteBodies(context, id, definition)`',
-  opTransform: 'Apply a transform to bodies.\n\n`opTransform(context, id, definition)`',
-  startSketch: 'Begin a new sketch on a plane or face.\n\n`startSketch(context, id, { sketchPlane })`',
-  skSolve: 'Solve sketch constraints.\n\n`skSolve(sketch)`',
-  qCreatedBy: 'Query entities created by a feature.\n\n`qCreatedBy(id, EntityType.FACE)`',
-  qOwnerBody: 'Query the owner body of an entity.\n\n`qOwnerBody(query)`',
-  qEverything: 'Query all entities of a type.\n\n`qEverything(EntityType.BODY)`',
-  evBox3d: 'Evaluate the 3D bounding box of entities.\n\n`evBox3d(context, { entities })`',
-  defineFeature: 'Define a custom feature.\n\n`export const myFeature = defineFeature(function(context, id, definition) { ... })`',
-  reportFeatureInfo: 'Report info message in the feature dialog.\n\n`reportFeatureInfo(context, id, "message")`',
-  isQueryEmpty: 'Check if a query selects no entities.\n\n`isQueryEmpty(context, query)`',
-  println: 'Print a value to the FeatureScript console.\n\n`println(value)`',
-  Context: 'The regeneration context — holds all Part Studio geometry state.',
-  Id: 'Unique identifier for features and operations.',
-  Query: 'A query that lazily selects geometric entities.',
-  ValueWithUnits: 'A number with associated units (e.g., 10 * millimeter).',
-  Vector: 'A 3D vector [x, y, z] with units.',
-  box: 'A mutable reference container. Access with `myBox[]`, create with `new box(value)`.',
-};
+import { getStdlib, formatSignature } from './stdlib-loader.js';
 
 /**
  * @param {string} source
@@ -40,10 +10,9 @@ export function provideHover(source, position) {
   const word = getWordAtPosition(source, position);
   if (!word) return null;
 
-  // Check stdlib docs
-  if (DOCS[word]) {
-    return { contents: { kind: 'markdown', value: DOCS[word] } };
-  }
+  // Check stdlib
+  const stdlibHover = getStdlibHover(word);
+  if (stdlibHover) return stdlibHover;
 
   // Check local declarations
   const { ast } = parse(source);
@@ -52,6 +21,89 @@ export function provideHover(source, position) {
       const detail = buildDeclDetail(decl);
       if (detail) return { contents: { kind: 'markdown', value: detail } };
     }
+  }
+
+  return null;
+}
+
+/**
+ * Build hover content from stdlib-data.json.
+ */
+function getStdlibHover(word) {
+  const stdlib = getStdlib();
+  if (!stdlib) return null;
+
+  // Functions — show all overload signatures
+  const fn = stdlib.functions[word];
+  if (fn) {
+    const sigs = fn.signatures.map(sig => formatSignature(word, sig));
+    const sigBlock = sigs.map(s => `${s}`).join('\n');
+    const md = [
+      '```featurescript',
+      sigBlock,
+      '```',
+      '',
+      `*${fn.module}*`,
+    ].join('\n');
+    return { contents: { kind: 'markdown', value: md } };
+  }
+
+  // Types
+  const type = stdlib.types[word];
+  if (type) {
+    const md = [
+      '```featurescript',
+      `type ${word}`,
+      '```',
+      '',
+      `*${type.module}*`,
+    ].join('\n');
+    return { contents: { kind: 'markdown', value: md } };
+  }
+
+  // Enums — show values
+  const enumData = stdlib.enums[word];
+  if (enumData) {
+    const vals = enumData.values?.length
+      ? enumData.values.join(', ')
+      : '(no values scraped)';
+    const md = [
+      '```featurescript',
+      `enum ${word} { ${vals} }`,
+      '```',
+      '',
+      `*${enumData.module}*`,
+    ].join('\n');
+    return { contents: { kind: 'markdown', value: md } };
+  }
+
+  // Constants
+  const constant = stdlib.constants[word];
+  if (constant) {
+    const md = [
+      '```featurescript',
+      `const ${word}`,
+      '```',
+      '',
+      `*${constant.module}*`,
+    ].join('\n');
+    return { contents: { kind: 'markdown', value: md } };
+  }
+
+  // Predicates
+  const pred = stdlib.predicates[word];
+  if (pred) {
+    const params = pred.params?.map(p =>
+      p.type && p.type !== 'any' ? `${p.name} is ${p.type}` : p.name
+    ).join(', ') ?? '';
+    const md = [
+      '```featurescript',
+      `predicate ${word}(${params})`,
+      '```',
+      '',
+      `*${pred.module}*`,
+    ].join('\n');
+    return { contents: { kind: 'markdown', value: md } };
   }
 
   return null;

@@ -1,6 +1,7 @@
 import lsp from 'vscode-languageserver/node.js';
 const { CompletionItemKind } = lsp;
 import { parse, NodeType, visit } from '../../parser/src/index.js';
+import { getStdlib, formatParamList } from './stdlib-loader.js';
 
 // ── Keyword completions ──
 const KEYWORDS = [
@@ -17,75 +18,6 @@ const KEYWORD_ITEMS = KEYWORDS.map(k => ({
   detail: 'keyword',
 }));
 
-// ── Common stdlib types ──
-const STDLIB_TYPES = [
-  'Context', 'Id', 'Query', 'boolean', 'number', 'string', 'array', 'map', 'box',
-  'ValueWithUnits', 'Vector', 'Line', 'Plane', 'CoordSystem', 'Transform',
-  'BooleanOperationType', 'BoundingType', 'OperationType',
-];
-
-const TYPE_ITEMS = STDLIB_TYPES.map(t => ({
-  label: t,
-  kind: CompletionItemKind.TypeParameter,
-  detail: 'type',
-}));
-
-// ── Common stdlib functions ──
-const STDLIB_FUNCTIONS = [
-  { label: 'opExtrude', detail: '(context, id, definition)' },
-  { label: 'opRevolve', detail: '(context, id, definition)' },
-  { label: 'opSweep', detail: '(context, id, definition)' },
-  { label: 'opLoft', detail: '(context, id, definition)' },
-  { label: 'opFillet', detail: '(context, id, definition)' },
-  { label: 'opChamfer', detail: '(context, id, definition)' },
-  { label: 'opBoolean', detail: '(context, id, definition)' },
-  { label: 'opPattern', detail: '(context, id, definition)' },
-  { label: 'opDeleteBodies', detail: '(context, id, definition)' },
-  { label: 'opTransform', detail: '(context, id, definition)' },
-  { label: 'startSketch', detail: '(context, id, value)' },
-  { label: 'sketchArc', detail: '(sketch, id, value)' },
-  { label: 'sketchCircle', detail: '(sketch, id, value)' },
-  { label: 'sketchLine', detail: '(sketch, id, value)' },
-  { label: 'sketchRectangle', detail: '(sketch, id, value)' },
-  { label: 'skSolve', detail: '(sketch)' },
-  { label: 'qCreatedBy', detail: '(id, entityType)' },
-  { label: 'qOwnerBody', detail: '(query)' },
-  { label: 'qEverything', detail: '(entityType)' },
-  { label: 'qBodyType', detail: '(query, bodyType)' },
-  { label: 'qUnion', detail: '(queries)' },
-  { label: 'qSubtraction', detail: '(from, subtract)' },
-  { label: 'qIntersection', detail: '(queries)' },
-  { label: 'evBox3d', detail: '(context, definition)' },
-  { label: 'evDistance', detail: '(context, definition)' },
-  { label: 'evFaceTangentPlane', detail: '(context, definition)' },
-  { label: 'evEdgeTangentLine', detail: '(context, definition)' },
-  { label: 'evVertexPoint', detail: '(context, definition)' },
-  { label: 'evLength', detail: '(context, definition)' },
-  { label: 'evArea', detail: '(context, definition)' },
-  { label: 'evVolume', detail: '(context, definition)' },
-  { label: 'isAtVersionOrLater', detail: '(context, version)' },
-  { label: 'reportFeatureInfo', detail: '(context, id, message)' },
-  { label: 'reportFeatureWarning', detail: '(context, id, message)' },
-  { label: 'reportFeatureError', detail: '(context, id, message)' },
-  { label: 'defineFeature', detail: '(feature, definition)' },
-  { label: 'isQueryEmpty', detail: '(context, query)' },
-  { label: 'size', detail: '(container)' },
-  { label: 'append', detail: '(array, value)' },
-  { label: 'concatenateArrays', detail: '(arrays)' },
-  { label: 'mergeMaps', detail: '(map1, map2)' },
-  { label: 'keys', detail: '(map)' },
-  { label: 'values', detail: '(map)' },
-  { label: 'mapArray', detail: '(arr, fn)' },
-  { label: 'toString', detail: '(value)' },
-  { label: 'println', detail: '(value)' },
-];
-
-const FUNCTION_ITEMS = STDLIB_FUNCTIONS.map(f => ({
-  label: f.label,
-  kind: CompletionItemKind.Function,
-  detail: f.detail,
-}));
-
 // ── Annotation keys ──
 const ANNOTATION_KEYS = [
   '"Name"', '"Feature Type Name"', '"UIHint"', '"Filter"', '"MaxNumberOfPicks"',
@@ -98,6 +30,102 @@ const ANNOTATION_ITEMS = ANNOTATION_KEYS.map(k => ({
   detail: 'annotation key',
   insertText: k,
 }));
+
+// ── Stdlib-driven completions (built lazily from stdlib-data.json) ──
+
+let _stdlibItems = null;
+
+function getStdlibItems() {
+  if (_stdlibItems) return _stdlibItems;
+
+  const stdlib = getStdlib();
+  if (!stdlib) return getFallbackItems();
+
+  const items = [];
+
+  // Functions — all 695+
+  for (const [name, data] of Object.entries(stdlib.functions)) {
+    const primarySig = data.signatures[0];
+    const overloadCount = data.signatures.length;
+    const detail = formatParamList(primarySig);
+    const overloadSuffix = overloadCount > 1 ? ` (+${overloadCount - 1} overload${overloadCount > 2 ? 's' : ''})` : '';
+
+    items.push({
+      label: name,
+      kind: CompletionItemKind.Function,
+      detail: `${detail}${overloadSuffix}`,
+      sortText: `1_${name}`, // Functions first
+      data: { module: data.module },
+    });
+  }
+
+  // Types — all 87
+  for (const [name, data] of Object.entries(stdlib.types)) {
+    items.push({
+      label: name,
+      kind: CompletionItemKind.TypeParameter,
+      detail: `type [${data.module}]`,
+      sortText: `2_${name}`,
+    });
+  }
+
+  // Enums — all 180
+  for (const [name, data] of Object.entries(stdlib.enums)) {
+    items.push({
+      label: name,
+      kind: CompletionItemKind.Enum,
+      detail: `enum [${data.module}]`,
+      sortText: `2_${name}`,
+    });
+
+    // Enum values as qualified names (e.g., BoundingType.BLIND)
+    for (const val of data.values ?? []) {
+      items.push({
+        label: `${name}.${val}`,
+        kind: CompletionItemKind.EnumMember,
+        detail: name,
+        sortText: `3_${name}.${val}`,
+      });
+    }
+  }
+
+  // Constants — all 123
+  for (const [name, data] of Object.entries(stdlib.constants)) {
+    items.push({
+      label: name,
+      kind: CompletionItemKind.Constant,
+      detail: `const [${data.module}]`,
+      sortText: `2_${name}`,
+    });
+  }
+
+  // Predicates — all 112
+  for (const [name, data] of Object.entries(stdlib.predicates)) {
+    items.push({
+      label: name,
+      kind: CompletionItemKind.Function,
+      detail: `predicate [${data.module}]`,
+      sortText: `1_${name}`,
+    });
+  }
+
+  _stdlibItems = items;
+  return items;
+}
+
+/** Minimal fallback if stdlib-data.json is missing */
+function getFallbackItems() {
+  const BUILTIN_TYPES = [
+    'Context', 'Id', 'Query', 'boolean', 'number', 'string', 'array', 'map', 'box',
+    'ValueWithUnits', 'Vector', 'Line', 'Plane', 'CoordSystem', 'Transform',
+  ];
+
+  return BUILTIN_TYPES.map(t => ({
+    label: t,
+    kind: CompletionItemKind.TypeParameter,
+    detail: 'type',
+  }));
+}
 
 /**
  * @param {string} source
@@ -113,19 +141,38 @@ export function provideCompletion(source, position) {
     return ANNOTATION_ITEMS;
   }
 
-  // After `is` or `as` — suggest types
+  // After `EnumType.` — suggest enum values
+  const enumDot = prefix.match(/(\w+)\.\w*$/);
+  if (enumDot) {
+    const stdlib = getStdlib();
+    if (stdlib) {
+      const enumName = enumDot[1];
+      const enumData = stdlib.enums[enumName];
+      if (enumData && enumData.values) {
+        return enumData.values.map(v => ({
+          label: v,
+          kind: CompletionItemKind.EnumMember,
+          detail: enumName,
+        }));
+      }
+    }
+  }
+
+  // After `is` or `as` — filter to types and enums only
   if (/\b(is|as)\s+\w*$/.test(prefix)) {
-    return TYPE_ITEMS;
+    return getStdlibItems().filter(item =>
+      item.kind === CompletionItemKind.TypeParameter ||
+      item.kind === CompletionItemKind.Enum
+    );
   }
 
   // Collect local symbols from the AST
   const localItems = collectLocalSymbols(source);
 
-  return [...KEYWORD_ITEMS, ...FUNCTION_ITEMS, ...TYPE_ITEMS, ...localItems];
+  return [...KEYWORD_ITEMS, ...getStdlibItems(), ...localItems];
 }
 
 function isInsideAnnotation(lines, pos) {
-  // Simple heuristic: walk backward to find `annotation {` without closing `}`
   let braceDepth = 0;
   for (let i = pos.line; i >= 0; i--) {
     const l = i === pos.line ? lines[i].slice(0, pos.character) : lines[i];
@@ -134,7 +181,6 @@ function isInsideAnnotation(lines, pos) {
       if (l[j] === '{') {
         braceDepth--;
         if (braceDepth < 0) {
-          // Check if preceded by `annotation`
           const before = l.slice(0, j).trimEnd();
           return before.endsWith('annotation');
         }

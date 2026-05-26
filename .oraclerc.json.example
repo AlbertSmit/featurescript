@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Oracle configuration — Onshape document IDs for the scratch validation workspace. API keys should be set via environment variables, never in this file.",
+
+  "baseUrl": "https://cad.onshape.com",
+
+  "documentId": "YOUR_DOCUMENT_ID_HERE",
+  "workspaceId": "YOUR_WORKSPACE_ID_HERE",
+  "featureStudioId": "YOUR_FEATURE_STUDIO_ELEMENT_ID_HERE",
+  "partStudioId": "YOUR_PART_STUDIO_ELEMENT_ID_HERE"
+}

@@ -1,5 +1,5 @@
-FeatureScript 2096;
-import(path : "onshape/std/common.fs", version : "2096.0");
+FeatureScript 2960;
+import(path : "onshape/std/common.fs", version : "2960.0");
 
 // Demonstrates: for-in loops, map manipulation, array operations,
 // try expressions, box types, and lambda functions

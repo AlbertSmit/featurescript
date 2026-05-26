@@ -1,5 +1,5 @@
-FeatureScript 2096;
-import(path : "onshape/std/common.fs", version : "2096.0");
+FeatureScript 2960;
+import(path : "onshape/std/common.fs", version : "2960.0");
 
 // Example from FeatureScript language reference — enums, types, predicates, and functions
 

@@ -1,0 +1,19 @@
+{
+  "name": "featurescript-toolchain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FeatureScript parser, linter, and language server",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/parser.test.js test/linter.test.js",
+    "test:parser": "node --test test/parser.test.js",
+    "test:linter": "node --test test/linter.test.js",
+    "lint": "node linter/src/cli.js",
+    "lint:examples": "node linter/src/cli.js examples/*.fs",
+    "build:vsix": "node vscode-ext/build.mjs",
+    "oracle": "node oracle/cli.js validate",
+    "oracle:corpus": "node oracle/cli.js corpus examples",
+    "oracle:generate-tests": "node oracle/cli.js generate-tests examples",
+    "oracle:eval": "node oracle/cli.js eval"
+  }
+}

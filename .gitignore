@@ -2,5 +2,14 @@ node_modules/
 *.vsix
 .vsix-staging/
 .vsix-inspect/
-
 .pnpm-store/
+
+# Oracle config (developer-specific document IDs)
+.oraclerc.json
+
+# Auto-generated oracle test fixtures
+test/oracle-generated/
+
+# VSIX build temp files
+vscode-ext/zi*
+vscode-ext/zx*

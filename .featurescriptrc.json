@@ -1,0 +1,13 @@
+{
+  "rules": {
+    "no-unused-vars": "warning",
+    "no-undefined-vars": "off",
+    "missing-export-feature": "warning",
+    "missing-precondition": "warning",
+    "no-try-silent-fail": "warning",
+    "no-reserved-keywords": "error",
+    "enum-naming": "info",
+    "type-naming": "info",
+    "function-naming": "info"
+  }
+}

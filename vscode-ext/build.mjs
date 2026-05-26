@@ -94,6 +94,15 @@ if (existsSync(join(ROOT, 'linter', 'package.json'))) {
   cpSync(join(ROOT, 'linter', 'package.json'), join(extDir, 'linter', 'package.json'));
 }
 
+// Copy stdlib-data.json for LSP completions, hover, and signature help
+const stdlibData = join(ROOT, 'stdlib-data.json');
+if (existsSync(stdlibData)) {
+  console.log('  ├─ Copying stdlib-data.json...');
+  cpSync(stdlibData, join(extDir, 'stdlib-data.json'));
+} else {
+  console.log('  │  ⚠  stdlib-data.json not found. Run: node oracle/scrape-stdlib.js');
+}
+
 // ── Rewrite extension.js to use local paths ──────────────────
 
 console.log('  ├─ Generating extension entry point...');
