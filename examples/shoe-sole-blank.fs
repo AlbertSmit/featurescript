@@ -234,13 +234,12 @@ export const shoeSoleBlank = defineFeature(function(context is Context, id is Id
         // side for LEFT foot), up to toes, back down medial (left side
         // for LEFT foot), and closes at heel.
 
-        const plane = evFaceTangentPlane(context, {
-                "face" : definition.buildPlane,
-                "parameter" : vector(0.5, 0.5)
+        const plane = evPlane(context, {
+                "face" : definition.buildPlane
         });
 
         var sk = newSketch(context, id + "outline", {
-                "sketchPlane" : plane
+                "sketchPlane" : definition.buildPlane
         });
 
         // Helper: convert mm pair to sketch vector with mirror
@@ -320,18 +319,19 @@ export const shoeSoleBlank = defineFeature(function(context is Context, id is Id
                 "endDepth" : thickness * millimeter
         });
 
-        // Fillet all vertical edges for organic shape (2mm radius)
+        // Fillet the outer vertical edges for organic shape
         try
         {
-            const verticalEdges = qCreatedBy(id + "baseSlab", EntityType.EDGE);
+            // Only fillet edges parallel to the extrude direction (vertical edges)
+            const verticalEdges = qParallelEdges(qCreatedBy(id + "baseSlab", EntityType.EDGE), plane.normal);
             opFillet(context, id + "outerFillet", {
                     "entities" : verticalEdges,
-                    "radius" : 2 * millimeter
+                    "radius" : 1.5 * millimeter
             });
         }
-        catch (e)
+        catch (_)
         {
-            reportFeatureWarning(context, id, "Outer fillet could not be applied — continuing without.");
+            // Fillet may fail on very short segments — non-critical
         }
 
         // ══════════════════════════════════════════════════════════════════
@@ -347,7 +347,7 @@ export const shoeSoleBlank = defineFeature(function(context is Context, id is Id
         // ── 4a. Heel cup ──
         // Elliptical pocket centered on heel, depth = heelCupD
         var heelSk = newSketch(context, id + "heelCupSketch", {
-                "sketchPlane" : plane
+                "sketchPlane" : definition.buildPlane
         });
 
         const heelCupCenterY = soleLen * 0.10;
@@ -373,7 +373,7 @@ export const shoeSoleBlank = defineFeature(function(context is Context, id is Id
                     "operationType" : NewBodyOperationType.REMOVE
             });
         }
-        catch (e)
+        catch (_)
         {
             // Heel cup cut failed — non-critical, continue
         }
@@ -381,7 +381,7 @@ export const shoeSoleBlank = defineFeature(function(context is Context, id is Id
         // ── 4b. Medial arch support channel ──
         // A trough along the medial arch to create the raised support ridge
         var archSk = newSketch(context, id + "archSketch", {
-                "sketchPlane" : plane
+                "sketchPlane" : definition.buildPlane
         });
 
         // Arch channel: narrow rectangle along medial side
@@ -408,7 +408,7 @@ export const shoeSoleBlank = defineFeature(function(context is Context, id is Id
                     "operationType" : NewBodyOperationType.REMOVE
             });
         }
-        catch (e)
+        catch (_)
         {
             // Arch cut failed — non-critical
         }
@@ -416,7 +416,7 @@ export const shoeSoleBlank = defineFeature(function(context is Context, id is Id
         // ── 4c. Metatarsal relief ──
         // Shallow elliptical pad behind the metatarsal heads
         var metSk = newSketch(context, id + "metSketch", {
-                "sketchPlane" : plane
+                "sketchPlane" : definition.buildPlane
         });
 
         const metCenterY = soleLen * 0.60;
@@ -440,7 +440,7 @@ export const shoeSoleBlank = defineFeature(function(context is Context, id is Id
                     "operationType" : NewBodyOperationType.REMOVE
             });
         }
-        catch (e)
+        catch (_)
         {
             // Metatarsal cut failed — non-critical
         }
@@ -448,7 +448,7 @@ export const shoeSoleBlank = defineFeature(function(context is Context, id is Id
         // ── 4d. Toe ramp ──
         // Slight depression in the toe area for natural toe-off
         var toeSk = newSketch(context, id + "toeSketch", {
-                "sketchPlane" : plane
+                "sketchPlane" : definition.buildPlane
         });
 
         const toeCenterY = soleLen * 0.88;
@@ -472,7 +472,7 @@ export const shoeSoleBlank = defineFeature(function(context is Context, id is Id
                     "operationType" : NewBodyOperationType.REMOVE
             });
         }
-        catch (e)
+        catch (_)
         {
             // Toe ramp cut failed — non-critical
         }
@@ -487,7 +487,7 @@ export const shoeSoleBlank = defineFeature(function(context is Context, id is Id
         if (heelDrop > 0)
         {
             var dropSk = newSketch(context, id + "dropSketch", {
-                    "sketchPlane" : plane
+                    "sketchPlane" : definition.buildPlane
             });
 
             // Trapezoidal cut profile spanning the sole bottom
@@ -512,10 +512,11 @@ export const shoeSoleBlank = defineFeature(function(context is Context, id is Id
                         "operationType" : NewBodyOperationType.REMOVE
                 });
             }
-            catch (e)
+            catch (_)
             {
                 reportFeatureWarning(context, id, "Heel drop cut could not be applied.");
             }
+
         }
 
         // ── 5b. Optional rocker profile ──
@@ -529,7 +530,7 @@ export const shoeSoleBlank = defineFeature(function(context is Context, id is Id
             const rockerR = (soleLen * soleLen) / (8 * heelDrop);  // approximate
 
             var rockerSk = newSketch(context, id + "rockerSketch", {
-                    "sketchPlane" : plane
+                    "sketchPlane" : definition.buildPlane
             });
 
             skCircle(rockerSk, "rockerCirc", {
@@ -549,25 +550,27 @@ export const shoeSoleBlank = defineFeature(function(context is Context, id is Id
                         "operationType" : NewBodyOperationType.REMOVE
                 });
             }
-            catch (e)
+            catch (_)
             {
                 reportFeatureWarning(context, id, "Rocker profile could not be applied.");
             }
         }
 
-        // ── 5c. Final edge filleting ──
+        // ── 5c. Final edge softening ──
+        // Use a small chamfer instead of fillet — more robust on complex geometry
         try
         {
             const soleBody = qCreatedBy(id + "baseSlab", EntityType.BODY);
             const allEdges = qOwnedByBody(soleBody, EntityType.EDGE);
-            opFillet(context, id + "finalFillet", {
+            opChamfer(context, id + "finalChamfer", {
                     "entities" : allEdges,
-                    "radius" : 1.5 * millimeter
+                    "chamferType" : ChamferType.EQUAL_OFFSETS,
+                    "width" : 0.5 * millimeter
             });
         }
-        catch (e)
+        catch (_)
         {
-            // Final fillet is cosmetic — non-critical
+            // Edge softening is cosmetic — non-critical
         }
 
         // ══════════════════════════════════════════════════════════════════

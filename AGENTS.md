@@ -188,10 +188,17 @@ Plus linter tests that verify rule correctness.
 
 - **Import resolution** — The linter does NOT resolve imports. Rules like `no-undefined-vars` are heuristic-only and intentionally disabled for cross-module references.
 - **Rule IDs are stable** — Don't rename rule IDs, they're used in `.featurescriptrc.json` config files.
+- **Object.prototype collisions** — FeatureScript has stdlib functions named `toString`, `constructor`, `valueOf` etc. When building lookup maps from `stdlib-data.json`, always use `Object.create(null)` — plain `{}` objects will have false hits from prototype methods.
 
 ### LSP
 
 - **Stdlib data** — Completions, hover, and signature help are driven by `stdlib-data.json` (1197 symbols scraped from FsDoc). If `stdlib-data.json` is missing, the LSP gracefully falls back to keyword-only completions.
+
+### Oracle
+
+- **`libraryVersion: 0` is normal** — The Onshape API returns `libraryVersion: 0` as the default state for successfully pushed Feature Studios. It is NOT a compilation error — do not flag it.
+- **`featurestudio/specs` returns 404** — The specs/references/features sub-endpoints on a Feature Studio element return 404. Use the Part Studio `features` endpoint to get `featureStates` for compilation diagnostics.
+- **Sketch API naming** — The current stdlib names are `newSketch`, `skLineSegment`, `skCircle`, `skRectangle`, `skSolve`. Old/wrong names like `startSketch`, `sketchLine`, `sketchCircle`, `sketchRectangle` do NOT exist in the stdlib and will cause runtime failures. The `no-unknown-stdlib-call` lint rule catches these.
 
 ## Conventions
 

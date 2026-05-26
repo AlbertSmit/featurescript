@@ -10,7 +10,9 @@ featurescript/
 ├── linter/          AST-driven lint rules + CLI
 ├── lsp/             Language Server Protocol provider
 ├── vscode-ext/      VS Code extension (TextMate grammar + LSP client)
-├── examples/        Real-world .fs files (slot, fillet, pattern, custom-wall)
+├── oracle/          Onshape validation oracle (push, compile, diff)
+├── stdlib-data.json Scraped standard library (1197 symbols)
+├── examples/        Real-world .fs files (slot, fillet, pattern, shoe-sole-blank)
 ├── test/            Automated test suite (node:test)
 └── docs/            Language reference & architecture notes
 ```
@@ -37,7 +39,7 @@ const { ast, errors } = parse(source);
 
 ### Linter
 
-9 lint rules covering correctness, naming conventions, and FeatureScript-specific patterns:
+10 lint rules covering correctness, naming conventions, and FeatureScript-specific patterns:
 
 | Rule | Severity | Description |
 |------|----------|-------------|
@@ -50,19 +52,20 @@ const { ast, errors } = parse(source);
 | `enum-naming` | info | Enum values should be `UPPER_SNAKE_CASE` |
 | `type-naming` | info | Types should be `PascalCase` |
 | `function-naming` | info | Functions should be `camelCase` |
+| `no-unknown-stdlib-call` | warning | Function calls that don't match any stdlib symbol (with typo suggestions) |
 
 Configurable via `.featurescriptrc.json`.
 
 ### LSP
 
-Language Server Protocol provider with:
+Language Server Protocol provider powered by `stdlib-data.json` (1197 scraped symbols):
 
 - **Diagnostics** — parse errors + lint violations
-- **Hover** — type and documentation info
-- **Completions** — stdlib functions, keywords, enum values
+- **Hover** — all stdlib functions (with overloads), types, enums, constants
+- **Completions** — 695 functions, 87 types, 180 enums, 123 constants + local symbols
 - **Go to Definition** — jump to symbol declarations
 - **Document Symbols** — outline view of functions, enums, types
-- **Signature Help** — parameter hints for function calls
+- **Signature Help** — parameter hints with overloads for all stdlib functions
 
 ### VS Code Extension
 
@@ -93,11 +96,28 @@ code --install-extension vscode-ext/featurescript-0.1.0.vsix
 ```
 
 The build script (`vscode-ext/build.mjs`) does the following:
-1. Copies `parser/`, `lsp/`, and `linter/` source into a staging directory
+1. Copies `parser/`, `lsp/`, `linter/` source and `stdlib-data.json` into a staging directory
 2. Rewrites the extension entry point to use packaged paths
 3. Writes VSIX metadata (`[Content_Types].xml`, `extension.vsixmanifest`)
 4. Zips everything into a `.vsix` using system `zip`
 5. Cleans up the staging directory
+
+### Oracle (Remote Validation)
+
+Validate FeatureScript files against Onshape's actual compiler:
+
+```bash
+# Validate a single file
+node oracle/cli.js validate examples/shoe-sole-blank.fs
+
+# Validate all example files
+node oracle/cli.js corpus examples
+
+# Regenerate stdlib-data.json from FsDoc
+node oracle/scrape-stdlib.js
+```
+
+Requires `.oraclerc.json` with Onshape API credentials and document IDs (see `.oraclerc.json.example`).
 
 ## Testing
 
@@ -111,7 +131,7 @@ The test suite uses Node.js built-in `node:test` runner with 4 tiers:
 | 4. AST completeness | Function/lambda bodies fully parsed, not empty stubs | 6 |
 
 ```bash
-node --test test/parser.test.js
+node --test test/parser.test.js test/linter.test.js
 ```
 
 ## Architecture
