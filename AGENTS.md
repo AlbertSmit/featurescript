@@ -21,7 +21,7 @@ parser/src/         Core parser (lexer → AST)
   └── index.js        Public API re-exports
 
 linter/src/         AST-driven lint engine
-  ├── rules.js      All lint rules (9 total)
+  ├── rules.js      All lint rules (10 total, incl. stdlib-aware checks)
   ├── engine.js     Rule runner
   ├── cli.js        CLI entry point (stylish/JSON output)
   ├── config.js     .featurescriptrc.json loader
@@ -30,11 +30,12 @@ linter/src/         AST-driven lint engine
 lsp/src/            Language Server Protocol
   ├── server.js     LSP entry point + capability registration
   ├── diagnostics.js  Parse errors → LSP diagnostics
-  ├── hover.js      Hover provider (stdlib + local symbols)
-  ├── completions.js  Completion provider
+  ├── stdlib-loader.js  Shared stdlib-data.json loader + formatters
+  ├── hover.js      Hover provider (stdlib-driven + local symbols)
+  ├── completions.js  Completion provider (695 functions, 87 types, 180 enums)
   ├── definition.js   Go to Definition
   ├── symbols.js    Document Symbol provider
-  ├── signature.js  Signature Help
+  ├── signature.js  Signature Help (all overloads from stdlib)
   └── semantic-tokens.js  (stub — future AST-aware tokenization)
 
 vscode-ext/         VS Code extension
@@ -42,6 +43,17 @@ vscode-ext/         VS Code extension
   ├── build.mjs      VSIX packager (zero-dependency, no vsce needed)
   ├── syntaxes/     TextMate grammar (.tmLanguage.json)
   └── src/          Extension activation + LSP client
+
+oracle/             Onshape validation oracle
+  ├── cli.js        CLI: validate, corpus, generate-tests commands
+  ├── client.js     Onshape REST API client (push, compile, diagnose)
+  ├── scrape-stdlib.js  FsDoc HTML → stdlib-data.json scraper
+  ├── config.js     .oraclerc.json loader
+  ├── differ.js     Local vs Oracle diagnostic diffing
+  └── debug-response.js  Raw API response inspector
+
+stdlib-data.json    Scraped standard library database (1197 symbols)
+                    Regenerate with: node oracle/scrape-stdlib.js
 
 examples/           Real-world .fs files for testing
 test/               Test suite (node:test runner)
@@ -56,14 +68,14 @@ Agents working on this codebase must understand the FeatureScript language. Key 
 
 **Version header** — Every .fs file starts with:
 ```
-FeatureScript 2096;
+FeatureScript 2960;
 ```
 
 **Imports** — Three forms:
 ```
-import(path : "onshape/std/common.fs", version : "2096.0");
+import(path : "onshape/std/common.fs", version : "2960.0");
 export import(path : "tabId", version : "microversion");
-ns::import(path : "onshape/std/math.fs", version : "2096.0");
+ns::import(path : "onshape/std/math.fs", version : "2960.0");
 ```
 
 **Feature definition** — The canonical pattern:
@@ -151,16 +163,18 @@ The build script (`vscode-ext/build.mjs`) packages parser, LSP, and linter sourc
 ## Testing
 
 ```bash
-node --test test/parser.test.js
+node --test test/parser.test.js test/linter.test.js
 ```
 
-Four tiers of tests:
+Four tiers of parser tests:
 1. **AST structure** — exact node types and shapes
 2. **Error detection** — invalid syntax produces errors
 3. **Corpus** — all `examples/*.fs` files parse with 0 errors
 4. **AST completeness** — function bodies contain all statements (not empty stubs)
 
-**Before any parser change**: run the full test suite. All 48 tests must pass.
+Plus linter tests that verify rule correctness.
+
+**Before any parser/linter change**: run the full test suite. All 91 tests must pass.
 
 ## Common Pitfalls
 
@@ -177,7 +191,7 @@ Four tiers of tests:
 
 ### LSP
 
-- **Stdlib data** — Completions and hover info come from hard-coded patterns, not a full stdlib database. Future work: scrape FsDoc into `stdlib-data.json`.
+- **Stdlib data** — Completions, hover, and signature help are driven by `stdlib-data.json` (1197 symbols scraped from FsDoc). If `stdlib-data.json` is missing, the LSP gracefully falls back to keyword-only completions.
 
 ## Conventions
 
@@ -185,4 +199,4 @@ Four tiers of tests:
 - **No external dependencies** — The parser, linter, and LSP are pure JavaScript.
 - **Node types are strings** — AST node types are plain strings from `NodeType` enum, not class instances.
 - **All AST nodes have `loc`** — `{ start: { line, column, offset }, end: { line, column, offset } }`.
-- **Test before commit** — Run `node --test test/parser.test.js` and verify 48/48 pass.
+- **Test before commit** — Run `node --test test/parser.test.js test/linter.test.js` and verify 91/91 pass.

@@ -10,6 +10,9 @@ node_modules/
 # Auto-generated oracle test fixtures
 test/oracle-generated/
 
+# Cached FsDoc HTML (1.7 MB, regenerate with: node oracle/scrape-stdlib.js)
+oracle/.fsdoc-cache.html
+
 # VSIX build temp files
 vscode-ext/zi*
 vscode-ext/zx*
